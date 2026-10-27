@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>System Architecture Case Study - Clinical Coding Adjudication Workspace</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg-page: #FAF8F5;
+    --bg-card: #FFFFFF;
+    --bg-sand: #F3EFE6;
+    --bg-sage: #EBF3EE;
+    --bg-terra: #FDF2F2;
+    --border-umber: #8C7A6B;
+    --border-dark: #4A3F35;
+    --border-sage: #2E6F40;
+    --border-terra: #A8383B;
+    --text-main: #1C1917;
+    --text-muted: #57534E;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    margin: 0;
+    padding: 32px;
+    line-height: 1.45;
+  }
+
+  .document-container {
+    max-width: 920px;
+    margin: 0 auto;
+    background: var(--bg-card);
+    border: 1px solid #E5E0D8;
+    padding: 40px 48px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+  }
+
+  /* Header Styling */
+  .doc-header {
+    border-bottom: 2px solid var(--border-dark);
+    padding-bottom: 18px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .doc-title-group h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 6px 0;
+    color: var(--text-main);
+  }
+
+  .doc-title-group p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .author-badge {
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .author-badge strong {
+    color: var(--text-main);
+    display: block;
+    font-size: 13px;
+  }
+
+  /* Executive Summary Grid */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .summary-box {
+    background: var(--bg-sand);
+    border-left: 3px solid var(--border-dark);
+    padding: 12px 14px;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .summary-box h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--border-dark);
+    margin: 0 0 6px 0;
+  }
+
+  .summary-box p {
+    font-size: 12px;
+    margin: 0;
+    color: var(--text-main);
+  }
+
+  /* Visual Architecture Diagram Container */
+  .diagram-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--border-dark);
+    margin-bottom: 14px;
+    border-bottom: 1px solid #E5E0D8;
+    padding-bottom: 6px;
+  }
+
+  .arch-layer {
+    border: 1.5px solid var(--border-umber);
+    border-radius: 6px;
+    background: #FCFBF9;
+    padding: 14px 16px;
+    position: relative;
+  }
+
+  .arch-layer.hipaa-zone {
+    background: var(--bg-sage);
+    border: 2px dashed var(--border-sage);
+  }
+
+  .arch-layer.client-zone {
+    background: #FAF8F5;
+    border: 2px solid var(--text-main);
+  }
+
+  .arch-layer.output-zone {
+    background: var(--bg-sand);
+    border: 1.5px solid var(--border-dark);
+  }
+
+  .layer-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--border-dark);
+    color: #FFFFFF;
+    padding: 3px 8px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+
+  .hipaa-zone .layer-badge {
+    background: var(--border-sage);
+  }
+
+  .output-zone .layer-badge {
+    background: var(--border-dark);
+  }
+
+  .node-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .node-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .arch-node {
+    background: #FFFFFF;
+    border: 1px solid #D6CFC7;
+    border-radius: 4px;
+    padding: 10px 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  }
+
+  .arch-node h4 {
+    font-size: 12px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    color: var(--text-main);
+  }
+
+  .arch-node ul {
+    margin: 0;
+    padding-left: 15px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .arch-node li {
+    margin-bottom: 2px;
+  }
+
+  .code-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: var(--bg-sand);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--border-dark);
+  }
+
+  /* Flow Connectors */
+  .flow-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 6px 0;
+    color: var(--border-dark);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .flow-line {
+    width: 2px;
+    height: 14px;
+    background-color: var(--border-dark);
+  }
+
+  .flow-label {
+    background: var(--bg-sand);
+    border: 1px solid var(--border-umber);
+    padding: 2px 10px;
+    border-radius: 12px;
+    margin: 2px 0;
+  }
+
+  .flow-arrow {
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--border-dark);
+  }
+
+  /* Workspace Split Preview */
+  .workspace-split {
+    display: grid;
+    grid-template-columns: 1.25fr 0.95fr 0.8fr;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .pane-box {
+    background: #FFFFFF;
+    border: 1px solid #1C1917;
+    border-radius: 4px;
+    padding: 10px;
+  }
+
+  .pane-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    border-bottom: 1px solid #E5E0D8;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+    color: var(--border-dark);
+  }
+
+  @media print {
+    body { padding: 0; background: #FFFFFF; }
+    .document-container { border: none; box-shadow: none; padding: 20px; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="document-container">
+
+  <!-- Document Header -->
+  <div class="doc-header">
+    <div class="doc-title-group">
+      <h1>Clinical Coding AI vs. Human Adjudication Workspace</h1>
+      <p>System Architecture &amp; Clinical Informatics Engineering Case Study</p>
+    </div>
+    <div class="author-badge">
+      <strong>Nader Abdelrahman, BPharm, BCPS</strong>
+      AI Solutions Engineer &amp; Senior Clinical Informatician
+    </div>
+  </div>
+
+  <!-- Executive Summary Bar -->
+  <div class="summary-grid">
+    <div class="summary-box">
+      <h3>1. Broken Clinical Workflow</h3>
+      <p>Manual error analysis of AI vs. human ICD-10-CM/PCS codes over shared Excel files caused concurrent user overwrites, file lag, and slow window-switching to read EHR charts.</p>
+    </div>
+    <div class="summary-box">
+      <h3>2. Architectural Solution</h3>
+      <p>Engineered a zero-server HTML/JS adjudication workspace paired with a Python partitioning script over enterprise OneDrive—staying 100% inside the existing HIPAA boundary.</p>
+    </div>
+    <div class="summary-box">
+      <h3>3. Measured Outcome</h3>
+      <p>Eliminated <strong>100% of concurrency overwrite collisions</strong>, unified EHR chart review + ICD-10 lookup into one screen, and cut per-patient adjudication time by <strong>~50%</strong>.</p>
+    </div>
+  </div>
+
+  <!-- Rendered System Architecture Diagram -->
+  <div class="diagram-section-title">System Architecture Blueprint</div>
+
+  <!-- LAYER 1 -->
+  <div class="arch-layer">
+    <span class="layer-badge">Layer 1 : Multi-Source Clinical Data Ingestion (RCM / EHR)</span>
+    <div class="node-grid-3">
+      <div class="arch-node">
+        <h4>Patient EHR Documentation</h4>
+        <ul>
+          <li>Discharge Summaries &amp; ICU Notes</li>
+          <li>Operative, Cath Lab &amp; Radiology Reports</li>
+        </ul>
+      </div>
+      <div class="arch-node">
+        <h4>AI Medical Coding Output</h4>
+        <ul>
+          <li>AI-generated <span class="code-pill">ICD-10-CM</span> Diagnoses</li>
+          <li>AI-generated <span class="code-pill">ICD-10-PCS</span> Procedures</li>
+        </ul>
+      </div>
+      <div class="arch-node">
+        <h4>Human Production Coders</h4>
+        <ul>
+          <li>Baseline human-abstracted code sets</li>
+          <li>Historical ground-truth benchmark</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connector 1 -> 2 -->
+  <div class="flow-connector">
+    <div class="flow-line"></div>
+    <div class="flow-label">Raw Dataset Ingestion</div>
+    <div class="flow-arrow"></div>
+  </div>
+
+  <!-- LAYER 2 -->
+  <div class="arch-layer">
+    <span class="layer-badge">Layer 2 : Python Automation, Code Alignment &amp; Sharding Engine</span>
+    <div class="node-grid-2">
+      <div class="arch-node">
+        <h4>1. Algorithmic Code-Pair Alignment</h4>
+        <ul>
+          <li>Pairs matching or sibling AI &amp; Human ICD-10 codes into unified comparison rows</li>
+          <li>Flags unaligned discrepancies (<span class="code-pill">AI-Only</span> vs. <span class="code-pill">Human-Only</span> misses)</li>
+        </ul>
+      </div>
+      <div class="arch-node">
+        <h4>2. Deterministic Reviewer Queue Sharding</h4>
+        <ul>
+          <li>Partitions dataset by <span class="code-pill">reviewer_username</span> to eliminate Excel concurrency locks</li>
+          <li>Injects patient EHR text directly into isolated user state payloads</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connector 2 -> 3 -->
+  <div class="flow-connector">
+    <div class="flow-line"></div>
+    <div class="flow-label">Automated Background Sync (Zero External Web Servers)</div>
+    <div class="flow-arrow"></div>
+  </div>
+
+  <!-- LAYER 3 -->
+  <div class="arch-layer hipaa-zone">
+    <span class="layer-badge">Layer 3 : Enterprise OneDrive HIPAA Boundary (Serverless Storage Layer)</span>
+    <div class="node-grid-3">
+      <div class="arch-node">
+        <h4>Isolated Reviewer Shards</h4>
+        <ul>
+          <li><span class="code-pill">queue_{username}.json</span></li>
+          <li>Zero cross-user overwrite risk</li>
+        </ul>
+      </div>
+      <div class="arch-node">
+        <h4>Embedded ICD-10 Index</h4>
+        <ul>
+          <li><span class="code-pill">icd10_cm_pcs_dict.json</span></li>
+          <li>Local billable &amp; sibling hierarchy</li>
+        </ul>
+      </div>
+      <div class="arch-node">
+        <h4>Single-File App Bundle</h4>
+        <ul>
+          <li><span class="code-pill">adjudication_viewer.html</span></li>
+          <li>Runs natively in local browser</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connector 3 -> 4 -->
+  <div class="flow-connector">
+    <div class="flow-line"></div>
+    <div class="flow-label">Local File Mount via Username Authentication (Zero Network Latency)</div>
+    <div class="flow-arrow"></div>
+  </div>
+
+  <!-- LAYER 4 -->
+  <div class="arch-layer client-zone">
+    <span class="layer-badge">Layer 4 : Client-Side HTML/JS Adjudication Workspace (Reviewer DOM)</span>
+    <div class="workspace-split">
+      <div class="pane-box">
+        <div class="pane-header">LEFT PANE : ALIGNED ADJUDICATION MATRIX</div>
+        <ul style="margin:0; padding-left:14px; font-size:11px; color:#57534E;">
+          <li><strong>Aligned Code Verdicts:</strong> 1-click <span class="code-pill">Both Correct</span>, <span class="code-pill">Both Wrong</span>, <span class="code-pill">AI Only</span>, or <span class="code-pill">Human Only</span></li>
+          <li><strong>Conditional Error Taxonomy Drawer:</strong>
+            <br>• <em>Code Should Not Exist (False Positive)</em>
+            <br>• <em>Overspecified</em> vs. <em>Underspecified</em>
+            <br>• <em>Weak Documentation</em> vs. <em>Wrong Sibling</em>
+          </li>
+          <li><strong>Correction Input:</strong> Free-text replacement ICD-10 code + clinical rationale</li>
+        </ul>
+      </div>
+      <div class="pane-box">
+        <div class="pane-header">RIGHT PANE : EMBEDDED EHR CHART VIEWER</div>
+        <ul style="margin:0; padding-left:14px; font-size:11px; color:#57534E;">
+          <li><strong>Draggable Split-Screen Resizer:</strong> Expand, collapse, or resize patient notes beside codes</li>
+          <li><strong>Multi-Tab Clinical Notes:</strong> Instant switching between Discharge, ICU, Operative, and Lab tabs</li>
+          <li><strong>Zero Context Switching:</strong> Eliminates toggling between Excel and external EMR windows</li>
+        </ul>
+      </div>
+      <div class="pane-box">
+        <div class="pane-header">UTILITY : ICD-10-CM/PCS LOOKUP</div>
+        <ul style="margin:0; padding-left:14px; font-size:11px; color:#57534E;">
+          <li><strong>Slide-Over Search Drawer:</strong> Instant code &amp; description query without leaving patient view</li>
+          <li><strong>Sibling Inspection:</strong> Verifies laterality, episode of care, and specificity rules</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connector 4 -> 5 -->
+  <div class="flow-connector">
+    <div class="flow-line"></div>
+    <div class="flow-label">1-Click Client-Side Export (<span class="code-pill">.json</span> / <span class="code-pill">.csv</span>)</div>
+    <div class="flow-arrow"></div>
+  </div>
+
+  <!-- LAYER 5 -->
+  <div class="arch-layer output-zone">
+    <span class="layer-badge">Layer 5 : Adjudication Results Export &amp; Quantitative Error Analysis</span>
+    <div class="node-grid-2">
+      <div class="arch-node">
+        <h4>Structured Reviewer Judgements (<span class="code-pill">CSV</span> / <span class="code-pill">JSON</span>)</h4>
+        <ul>
+          <li>Exports adjudicated patient rows with side-by-side AI vs. Human verdicts</li>
+          <li>Includes assigned error categories and corrected replacement ICD-10 codes</li>
+        </ul>
+      </div>
+      <div class="arch-node">
+        <h4>Downstream Error Analysis &amp; Reporting</h4>
+        <ul>
+          <li>Aggregates clean reviewer exports without spreadsheet merge conflicts</li>
+          <li>Enables direct statistical evaluation of AI vs. Human coding accuracy and error distribution</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

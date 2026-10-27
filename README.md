@@ -24,61 +24,67 @@ Hospital revenue cycle and clinical natural language processing (NLP) teams rout
 The production workflow separates heavy data engineering and clinical entity alignment (executed offline in Python) from the zero-server client workspace distributed via Enterprise OneDrive.
 
 ```mermaid
-flowchart TD
-    subgraph Ingestion["1. Data Ingestion & Pipeline Layer"]
-        EHR["Raw EHR Clinical Notes<br/>(Discharge, ICU, Operative, Labs)"]
-        HUM["Human HIM Coder Output<br/>(ICD-10-CM & ICD-10-PCS)"]
-        LLM["LLM Medical Coding Pipeline<br/>(RAG + Clinical Extraction)"]
+flowchart TB
+    %% Styling Definitions
+    classDef source fill:#F3EFE6,stroke:#8C7A6B,stroke-width:1.5px,color:#1C1917
+    classDef engine fill:#EFECE6,stroke:#4A3F35,stroke-width:2px,color:#1C1917
+    classDef storage fill:#EBF3EE,stroke:#2E6F40,stroke-width:2px,color:#1C1917
+    classDef client fill:#FAF8F5,stroke:#1C1917,stroke-width:2px,color:#1C1917
+    classDef output fill:#F3EFE6,stroke:#4A3F35,stroke-width:1.5px,color:#1C1917
+
+    %% 1. Data Ingestion Layer
+    subgraph L1 ["1. MULTI-SOURCE CLINICAL DATA INGESTION (RCM / EHR)"]
+        direction LR
+        A1[("Patient EHR Documentation\n• Discharge Summaries & ICU Notes\n• Operative, Cath Lab & Radiology Reports")]:::source
+        A2[("AI Medical Coding Output\n• AI-generated ICD-10-CM Diagnoses\n• AI-generated ICD-10-PCS Procedures")]:::source
+        A3[("Human Production Coders\n• Baseline human-abstracted code sets\n• Historical ground-truth benchmark")]:::source
     end
 
-    subgraph Engine["2. Python Automation & Partition Engine"]
-        ALIGN["Clinical Entity & Code Alignment<br/>(Exact Match, Sibling Discrepancy, Unaligned)"]
-        TAX["Embedded ICD-10-CM/PCS<br/>Taxonomy & Guideline Indexer"]
-        SHARD["Reviewer Partition Sharder<br/>(Deterministic Lock by reviewer_id)"]
+    %% 2. Python Automation & Pre-Processing Engine
+    subgraph L2 ["2. PYTHON AUTOMATION, CODE ALIGNMENT & SHARDING ENGINE"]
+        direction TB
+        B1["1. Algorithmic Code-Pair Alignment\n• Pairs matching or sibling AI & Human ICD-10 codes into unified comparison rows\n• Flags unaligned discrepancies (AI-Only vs. Human-Only misses)"]:::engine
+        B2["2. Deterministic Reviewer Queue Sharding\n• Partitions dataset by reviewer_username to eliminate Excel concurrency locks\n• Injects patient EHR text directly into isolated user state payloads"]:::engine
+        B1 --> B2
     end
 
-    subgraph Storage["3. HIPAA Enterprise OneDrive Boundary"]
-        SHARD_A["Isolated State Shard<br/>(adjudication_shard_admin.json)"]
-        SHARD_B["Isolated State Shard<br/>(adjudication_shard_dr_nader.json)"]
-        HTML["Zero-Server Single-File App<br/>(index.html)"]
+    %% 3. HIPAA Boundary & Zero-Server Sync Layer
+    subgraph L3 ["3. ENTERPRISE ONEDRIVE HIPAA BOUNDARY (Serverless Storage Layer)"]
+        direction LR
+        C1[("Isolated Reviewer Shards\n• queue_{username}.json\n• Zero cross-user overwrite risk")]:::storage
+        C2[("Embedded ICD-10 Index\n• icd10_cm_pcs_dict.json\n• Local billable & sibling hierarchy")]:::storage
+        C3[("Single-File App Bundle\n• adjudication_viewer.html\n• Runs natively in local browser")]:::storage
     end
 
-    subgraph Client["4. Zero-Server Client Workspace (Browser DOM)"]
-        AUTH["HIPAA Compliance Gate &<br/>Reviewer Partition Mount"]
-        MATRIX["Left Pane: Aligned AI vs. Human<br/>Adjudication Matrix & Error Drawer"]
-        CHART["Right Pane: Multi-Tab EHR Viewer<br/>with Cited Evidence Highlighting"]
-        LOOKUP["Slide-Over ICD-10-CM/PCS<br/>Searchable Dictionary"]
+    %% 4. Client-Side Adjudication Workspace
+    subgraph L4 ["4. CLIENT-SIDE HTML/JS ADJUDICATION WORKSPACE (Reviewer DOM)"]
+        direction TB
+        D1["Local Authentication & Queue Mount\n• Validates Reviewer Username & mounts assigned patient shard with zero network latency"]:::client
+        
+        subgraph UI ["Unified Split-Pane Clinical Review Interface"]
+            direction LR
+            D2["Left Pane: Aligned Adjudication Matrix\n• 1-Click Verdicts: Both Correct, Both Wrong, AI Only, Human Only\n• Conditional Error Taxonomy Drawer:\n  - Code Should Not Exist (False Positive)\n  - Overspecified vs. Underspecified\n  - Weak Documentation vs. Wrong Sibling\n• Free-text Replacement ICD-10 Code + Rationale"]:::client
+            D3["Right Pane: Embedded EHR Chart Viewer\n• Draggable Split-Screen Resizer\n• Multi-Tab Clinical Notes (Discharge, ICU, Operative, Labs)\n• Zero Context Switching (No external EMR/Excel toggling)"]:::client
+            D4["Utility: ICD-10-CM/PCS Lookup\n• Slide-over search drawer without leaving patient view\n• Sibling inspection for laterality & specificity rules"]:::client
+        end
+        
+        D1 --> UI
     end
 
-    subgraph Feedback["5. Adjudication & Feedback Loop"]
-        EXPORT["Structured Export Engine<br/>(JSON / CSV Download)"]
-        RAG["LLM Prompt & RAG<br/>Refinement Pipeline"]
-        QA["Human Coder QA &<br/>MS-DRG Audit Benchmarks"]
+    %% 5. Output & Error Analysis Layer
+    subgraph L5 ["5. ADJUDICATION RESULTS EXPORT & QUANTITATIVE ERROR ANALYSIS"]
+        direction LR
+        E1[("Structured Reviewer Judgements (CSV / JSON)\n• Exports adjudicated patient rows with side-by-side AI vs. Human verdicts\n• Includes assigned error categories & corrected replacement ICD-10 codes")]:::output
+        E2["Downstream Error Analysis & Reporting\n• Aggregates clean reviewer exports without spreadsheet merge conflicts\n• Enables direct statistical evaluation of AI vs. Human coding accuracy & error distribution"]:::output
+        E1 --> E2
     end
 
-    EHR --> ALIGN
-    HUM --> ALIGN
-    LLM --> ALIGN
-    ALIGN --> SHARD
-    TAX --> HTML
-    SHARD --> SHARD_A
-    SHARD --> SHARD_B
-
-    SHARD_A --> AUTH
-    SHARD_B --> AUTH
-    HTML --> AUTH
-
-    AUTH --> MATRIX
-    AUTH --> CHART
-    AUTH --> LOOKUP
-
-    MATRIX <-->|"Cite Clinical Evidence"| CHART
-    LOOKUP -->|"Assign Replacement Code"| MATRIX
-    MATRIX --> EXPORT
-    EXPORT --> RAG
-    EXPORT --> QA
+    %% Connections Across Layers
+    A1 & A2 & A3 == "Raw Dataset Ingestion" ==> B1
+    B2 == "Automated Background Sync\n(Zero External Web Servers)" ==> L3
+    L3 == "Local File Mount via Username Auth\n(Zero Network Latency)" ==> D1
+    UI == "1-Click Client-Side Export (.json / .csv)" ==> E1
 ```
-
 ---
 
 ## Security & HIPAA Compliance Model
